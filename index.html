@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Gaegu:wght@700&display=swap" rel="stylesheet">
 <meta charset="utf-8">
 <title>여행 준비물 관리</title>
 <link rel="manifest" href="manifest.json">
@@ -28,9 +31,40 @@
   .add input { flex: 1; }
   .count { font-size: 12px; color: #6b7280; }
   hr { border: none; border-top: 1px solid #eee; margin: 14px 0; }
+ #splash {
+  position: fixed;
+  inset: 0;                    
+  background: #fdedd6;         
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  z-index: 9999;
+  transition: opacity 0.5s ease;
+}
+#splash img {
+  width: 160px;
+  height: 160px;
+  border-radius: 36px;        
+}
+#splash p {
+  font-family: 'Jua', 'Gaegu', sans-serif;  
+  font-size: 22px;
+  color: #C2410C;         
+  margin: 0;
+}
+#splash.hide {
+  opacity: 0;
+  pointer-events: none;       
+}
 </style>
 </head>
 <body>
+<div id="splash">
+ <img src="icon.png" alt="여행 준비물" />
+ <p>여행의 시작은 준비부터</p>
+</div>
   <h1>🧳 여행 준비물 관리</h1>
 
   <!-- 여행 선택 줄 -->
@@ -254,6 +288,17 @@
       navigator.serviceWorker.register("service-worker.js");
     });
   }
+</script>
+ <script>
+  window.addEventListener("load", () => {
+    setTimeout(() => {
+      const s = document.getElementById("splash");
+      if (s) {
+        s.classList.add("hide");
+        setTimeout(() => s.remove(), 500);
+      }
+    }, 1500); 
+  });
 </script>
 </body>
 </html>
