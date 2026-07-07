@@ -30,6 +30,7 @@
   .add { display: flex; gap: 6px; margin-top: 8px; }
   .add input { flex: 1; }
   .count { font-size: 12px; color: #6b7280; }
+  .dday { font-weight: 700; font-size: 16px; color: #2563eb; }
   hr { border: none; border-top: 1px solid #eee; margin: 14px 0; }
  #splash {
   position: fixed;
@@ -153,11 +154,13 @@
 
   function defaultStore() {
     return { trips: { "기본 여행": JSON.parse(JSON.stringify(DEFAULT_CATS)) },
-             current: "기본 여행" };
+             current: "기본 여행",
+             tripDates: {} };
   }
 
   let store = JSON.parse(localStorage.getItem("travelStore")) || defaultStore();
-
+  if (!store.tripDates) store.tripDates = {};
+ 
   function save() { localStorage.setItem("travelStore", JSON.stringify(store)); }
   function curCats() { return store.trips[store.current]; }
 
@@ -172,7 +175,26 @@
       sel.appendChild(opt);
     });
   }
-  function switchTrip(name) { store.current = name; save(); render(); }
+ function switchTrip(name) { store.current = name; save(); render(); }
+
+  function setTripDate(val) {                        
+    store.tripDates[store.current] = val;
+    save(); renderDday();
+  }
+  function renderDday() {                            
+    const input = document.getElementById("tripDate");
+    const el = document.getElementById("dday");
+    const d = store.tripDates[store.current] || "";
+    input.value = d;
+    if (!d) { el.textContent = "날짜를 설정하세요"; el.style.color = "#9ca3af"; return; }
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const target = new Date(d); target.setHours(0, 0, 0, 0);
+    const diff = Math.round((target - today) / 86400000);
+    if (diff > 0)        { el.textContent = "D-" + diff;                       el.style.color = "#2563eb"; }
+    else if (diff === 0) { el.textContent = "오늘 출발! D-DAY 🎉";            el.style.color = "#dc2626"; }
+    else                 { el.textContent = "여행 " + Math.abs(diff) + "일 지남"; el.style.color = "#9ca3af"; }
+  }
+
   function addTrip() {
     const name = prompt("새 여행 이름을 입력하세요 (예: 일본 오사카 3박4일)");
     if (!name) return;
@@ -187,6 +209,8 @@
     if (store.trips[newName]) { alert("같은 이름의 여행이 이미 있습니다."); return; }
     store.trips[newName] = store.trips[oldName];
     delete store.trips[oldName];
+    store.tripDates[newName] = store.tripDates[oldName];   
+    delete store.tripDates[oldName];                     
     store.current = newName; save(); render();
   }
   function delTrip() {
@@ -194,6 +218,7 @@
     if (names.length <= 1) { alert("최소 한 개의 여행은 있어야 합니다."); return; }
     if (!confirm(`'${store.current}' 여행을 삭제할까요?`)) return;
     delete store.trips[store.current];
+    delete store.tripDates[store.current];
     store.current = Object.keys(store.trips)[0];
     save(); render();
   }
@@ -239,7 +264,9 @@
         const loaded = JSON.parse(e.target.result);
         if (!loaded.trips || !loaded.current) throw new Error("형식 오류");
         if (confirm("불러오면 현재 데이터를 덮어씁니다. 계속할까요?")) {
-          store = loaded; save(); render();
+          store = loaded; 
+          if (!store.tripDates) store.tripDates = {};
+          save(); render();
           alert("불러오기 완료!");
         }
       } catch (err) { alert("올바른 백업 파일이 아닙니다."); }
@@ -251,6 +278,7 @@
   // ===== 화면 그리기 =====
   function render() {
     renderTripSelect();
+    renderDday(); 
     const list = document.getElementById("list");
     list.innerHTML = "";
     curCats().forEach((cat, ci) => {
