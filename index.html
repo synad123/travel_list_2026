@@ -80,6 +80,13 @@
     <button class="gray" onclick="delTrip()">이 여행 삭제</button>
   </div>
 
+  <!-- 여행 날짜 · D-day 줄 -->
+  <div class="bar">
+    <label>여행 날짜:</label>
+    <input type="date" id="tripDate" onchange="setTripDate(this.value)">
+    <span id="dday" class="dday"></span>
+  </div>
+
   <!-- 백업/공유 줄 -->
   <div class="bar">
     <button class="gray" onclick="exportData()">💾 백업(내보내기)</button>
