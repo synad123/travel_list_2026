@@ -1,4 +1,4 @@
-const CACHE = "travel-app-v12";
+const CACHE = "travel-app-v13";
 const ASSETS = [
   "./",
   "./index.html",
@@ -21,7 +21,23 @@ self.addEventListener("activate", e => {
 });
 
 self.addEventListener("fetch", e => {
+  const req = e.request;
+
+  if (req.mode === "navigate" ||
+      (req.headers.get("accept") || "").includes("text/html")) {
+    e.respondWith(
+      fetch(req)
+        .then(res => {
+          const copy = res.clone();
+          caches.open(CACHE).then(c => c.put(req, copy));
+          return res;
+        })
+        .catch(() => caches.match(req).then(r => r || caches.match("./index.html")))
+    );
+    return;
+  }
+
   e.respondWith(
-    caches.match(e.request).then(res => res || fetch(e.request))
+    caches.match(req).then(res => res || fetch(req))
   );
 });
