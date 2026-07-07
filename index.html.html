@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>여행 준비물 관리</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", "맑은 고딕", sans-serif;
+         max-width: 720px; margin: 0 auto; padding: 20px; color: #111; }
+  h1 { font-size: 22px; }
+  .bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
+  input, button, select { font-size: 14px; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; }
+  button { cursor: pointer; background: #2563eb; color: #fff; border-color: #2563eb; }
+  button.gray { background: #fff; color: #333; border-color: #ccc; }
+  select { background: #fff; color: #111; min-width: 160px; }
+  .cat { border: 1px solid #d1d5db; border-radius: 8px; margin-bottom: 14px; overflow: hidden; }
+  .cat-head { display: flex; justify-content: space-between; align-items: center;
+              padding: 10px 14px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; }
+  .cat-title { font-weight: 600; }
+  .cat-body { padding: 6px 14px 10px; }
+  .item { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid #f0f0f0; }
+  .item span { flex: 1; }
+  .item.done span { text-decoration: line-through; color: #9ca3af; }
+  .del { color: #dc2626; background: none; border: none; font-size: 13px; padding: 2px 6px; }
+  .add { display: flex; gap: 6px; margin-top: 8px; }
+  .add input { flex: 1; }
+  .count { font-size: 12px; color: #6b7280; }
+  hr { border: none; border-top: 1px solid #eee; margin: 14px 0; }
+</style>
+</head>
+<body>
+  <h1>🧳 여행 준비물 관리</h1>
+
+  <!-- 여행 선택 줄 -->
+  <div class="bar">
+    <label>여행 선택:</label>
+    <select id="tripSelect" onchange="switchTrip(this.value)"></select>
+    <button onclick="addTrip()">새 여행 추가</button>
+    <button class="gray" onclick="renameTrip()">이름 변경</button>
+    <button class="gray" onclick="delTrip()">이 여행 삭제</button>
+  </div>
+
+  <!-- 백업/공유 줄 -->
+  <div class="bar">
+    <button class="gray" onclick="exportData()">💾 백업(내보내기)</button>
+    <button class="gray" onclick="document.getElementById('fileIn').click()">📂 불러오기</button>
+    <input type="file" id="fileIn" accept=".json" style="display:none" onchange="importData(event)">
+  </div>
+
+  <hr>
+
+  <!-- 항목 추가 줄 -->
+  <div class="bar">
+    <input id="newCat" placeholder="새 항목(카테고리) 이름" style="flex:1">
+    <button onclick="addCategory()">항목 추가</button>
+  </div>
+
+  <div id="list"></div>
+
+<script>
+  // ===== 데이터 구조 =====
+  // store = { trips: { "여행이름": [ {name, items:[{text,done}]} ] }, current: "여행이름" }
+
+  const DEFAULT_CATS = [
+    { name: "필수 서류·금융", items: [
+        { text: "여권 (유효기간 6개월 이상)", done: false },
+        { text: "항공권 · e-티켓", done: false },
+        { text: "입국 시 필요 서류", done: false },
+        { text: "신용카드 · 체크카드", done: false },
+        { text: "현지 화폐 · 환전", done: false },
+        { text: "숙소 예약 확인서", done: false },
+        { text: "해외 데이터(e-sim 등)", done: false } ] },
+
+    { name: "전자기기", items: [
+        { text: "휴대폰 + 충전기", done: false },
+        { text: "보조배터리", done: false },
+        { text: "멀티 어댑터 · 변환 플러그", done: false },
+        { text: "이어폰 · 헤드폰", done: false } ] },
+
+    { name: "의류", items: [
+        { text: "겉옷 · 얇은 재킷", done: false },
+        { text: "상의", done: false },
+        { text: "하의", done: false },
+        { text: "속옷 · 양말", done: false },
+        { text: "잠옷", done: false },
+        { text: "운동화 · 샌들 · 슬리퍼", done: false },
+        { text: "모자 · 선글라스", done: false } ] },
+
+    { name: "세면·욕실", items: [
+        { text: "칫솔 · 치약", done: false },
+        { text: "샴푸 · 바디워시", done: false },
+        { text: "세안용품", done: false },
+        { text: "기초화장품 · 선크림", done: false },
+        { text: "여분 수건", done: false } ] },
+
+    { name: "의약품·위생", items: [
+        { text: "상비약 (감기·소화·진통)", done: false },
+        { text: "밴드", done: false },
+        { text: "마스크", done: false },
+        { text: "손소독제 · 물티슈", done: false } ] },
+
+    { name: "여행 편의용품", items: [
+        { text: "안대", done: false },
+        { text: "우산", done: false },
+        { text: "지퍼백 · 비닐봉투", done: false },
+        { text: "보조 가방 / 에코백", done: false } ] },
+
+    { name: "기내 휴대", items: [
+        { text: "여권 · 지갑 · 휴대폰", done: false },
+        { text: "보조배터리 (기내 필수)", done: false },
+        { text: "간단한 간식", done: false },
+        { text: "겉옷", done: false } ] }
+  ];
+
+  function defaultStore() {
+    return { trips: { "기본 여행": JSON.parse(JSON.stringify(DEFAULT_CATS)) },
+             current: "기본 여행" };
+  }
+
+  let store = JSON.parse(localStorage.getItem("travelStore")) || defaultStore();
+
+  function save() { localStorage.setItem("travelStore", JSON.stringify(store)); }
+  function curCats() { return store.trips[store.current]; }
+
+  // ===== 여행 관리 =====
+  function renderTripSelect() {
+    const sel = document.getElementById("tripSelect");
+    sel.innerHTML = "";
+    Object.keys(store.trips).forEach(name => {
+      const opt = document.createElement("option");
+      opt.value = name; opt.textContent = name;
+      if (name === store.current) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }
+  function switchTrip(name) { store.current = name; save(); render(); }
+  function addTrip() {
+    const name = prompt("새 여행 이름을 입력하세요 (예: 일본 오사카 3박4일)");
+    if (!name) return;
+    if (store.trips[name]) { alert("같은 이름의 여행이 이미 있습니다."); return; }
+    store.trips[name] = JSON.parse(JSON.stringify(DEFAULT_CATS));
+    store.current = name; save(); render();
+  }
+  function renameTrip() {
+    const oldName = store.current;
+    const newName = prompt("여행 이름 변경:", oldName);
+    if (!newName || newName === oldName) return;
+    if (store.trips[newName]) { alert("같은 이름의 여행이 이미 있습니다."); return; }
+    store.trips[newName] = store.trips[oldName];
+    delete store.trips[oldName];
+    store.current = newName; save(); render();
+  }
+  function delTrip() {
+    const names = Object.keys(store.trips);
+    if (names.length <= 1) { alert("최소 한 개의 여행은 있어야 합니다."); return; }
+    if (!confirm(`'${store.current}' 여행을 삭제할까요?`)) return;
+    delete store.trips[store.current];
+    store.current = Object.keys(store.trips)[0];
+    save(); render();
+  }
+
+  // ===== 항목/준비물 관리 =====
+  function addCategory() {
+    const el = document.getElementById("newCat");
+    const name = el.value.trim();
+    if (!name) return;
+    curCats().push({ name, items: [] });
+    el.value = ""; save(); render();
+  }
+  function delCategory(ci) {
+    if (confirm("이 항목 전체를 삭제할까요?")) { curCats().splice(ci, 1); save(); render(); }
+  }
+  function addItem(ci) {
+    const el = document.getElementById("in" + ci);
+    const text = el.value.trim();
+    if (!text) return;
+    curCats()[ci].items.push({ text, done: false });
+    save(); render();
+  }
+  function delItem(ci, ii) { curCats()[ci].items.splice(ii, 1); save(); render(); }
+  function toggle(ci, ii) {
+    curCats()[ci].items[ii].done = !curCats()[ci].items[ii].done; save(); render();
+  }
+
+  // ===== 백업 / 공유 =====
+  function exportData() {
+    const blob = new Blob([JSON.stringify(store, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const today = new Date().toISOString().slice(0, 10);
+    a.href = url; a.download = `여행준비물_백업_${today}.json`;
+    a.click(); URL.revokeObjectURL(url);
+  }
+  function importData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const loaded = JSON.parse(e.target.result);
+        if (!loaded.trips || !loaded.current) throw new Error("형식 오류");
+        if (confirm("불러오면 현재 데이터를 덮어씁니다. 계속할까요?")) {
+          store = loaded; save(); render();
+          alert("불러오기 완료!");
+        }
+      } catch (err) { alert("올바른 백업 파일이 아닙니다."); }
+      event.target.value = "";
+    };
+    reader.readAsText(file, "utf-8");
+  }
+
+  // ===== 화면 그리기 =====
+  function render() {
+    renderTripSelect();
+    const list = document.getElementById("list");
+    list.innerHTML = "";
+    curCats().forEach((cat, ci) => {
+      const doneCount = cat.items.filter(i => i.done).length;
+      const div = document.createElement("div");
+      div.className = "cat";
+      div.innerHTML = `
+        <div class="cat-head">
+          <span class="cat-title">${cat.name}</span>
+          <span>
+            <span class="count">${cat.items.length}개 · ${doneCount}개 완료</span>
+            <button class="del" onclick="delCategory(${ci})">항목 삭제</button>
+          </span>
+        </div>
+        <div class="cat-body">
+          ${cat.items.map((it, ii) => `
+            <div class="item ${it.done ? 'done' : ''}">
+              <input type="checkbox" ${it.done ? 'checked' : ''} onclick="toggle(${ci},${ii})">
+              <span>${it.text}</span>
+              <button class="del" onclick="delItem(${ci},${ii})">삭제</button>
+            </div>`).join("")}
+          <div class="add">
+            <input placeholder="세부 준비물 입력" id="in${ci}"
+                   onkeydown="if(event.key==='Enter')addItem(${ci})">
+            <button onclick="addItem(${ci})">추가</button>
+          </div>
+        </div>`;
+      list.appendChild(div);
+    });
+  }
+
+  render();
+</script>
+</body>
+</html>
